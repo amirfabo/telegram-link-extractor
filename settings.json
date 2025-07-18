@@ -1,0 +1,12 @@
+{
+    "general": {
+        "offset_date": null // Example: "2024-01-01"
+    },
+    "auth": {
+        "api_id": "12345",
+        "api_hash": "0123456789abcdef0123456789abcdef"
+    },
+    "output": {
+        "path": "url_output.csv"
+    }
+}
