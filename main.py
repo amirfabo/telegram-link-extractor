@@ -2,11 +2,12 @@ import sys
 import json
 import time
 import os
-import asyncio
 import re
 import csv
 import platform
+import asyncio
 from datetime import datetime
+from random import randint
 from telethon import TelegramClient
 from telethon.tl.functions.messages import GetWebPageRequest
 from telethon.tl.types import InputMessagesFilterUrl 
@@ -107,6 +108,7 @@ async def main():
         dialog_count = len(dialogs)
         
         url_rows = []
+        checked_urls = []
         valid_url_count = 0
 
         pattern = r"https:\/\/t(elegram)?\.me\/(joinchat\/)?[A-Za-z0-9\-_]+"
@@ -120,8 +122,10 @@ async def main():
 
         update_screen(MAIN_MSG.format(status='Extracting urls', additional_info=''))
         for number, dialog in enumerate(dialogs, start=1):
-            found_url_count = len(url_rows)
+            if (dialog.is_group or dialog.is_channel) and not dialog.entity.creator:
+                continue
 
+            found_url_count = len(url_rows)
             update_screen(
                 MAIN_MSG.format(
                     status='Extracting urls',
@@ -130,6 +134,7 @@ async def main():
                         checked=number,
                         progress=(number * 100) / dialog_count,
                         chat_id=dialog.entity.id,
+
                     ) + (URL_LOG_SECTION.format(
                         total=found_url_count,
                         valid=valid_url_count,
@@ -138,16 +143,17 @@ async def main():
                 )
             )
 
-            if (dialog.is_group or dialog.is_channel) and not dialog.entity.creator:
-                continue
-            
             async for message in client.iter_messages(
                 entity=dialog.entity,
                 filter=InputMessagesFilterUrl(),
                 offset_date=offset_param,
+                wait_time=randint(4, 12),
             ):
                 urls = [m.group() for m in re.finditer(pattern, message.message)]
                 for url in urls:
+                    if url in checked_urls:
+                        continue
+
                     response = await get_webpage(client=client, url=url)
                     if response is None or not isinstance(response.webpage, WebPage):
                         row = (url, None, None)
@@ -157,6 +163,26 @@ async def main():
                         valid_url_count += 1
 
                     url_rows.append(row)
+                    checked_urls.append(url)
+
+                    found_url_count = len(url_rows)
+                    update_screen(
+                        MAIN_MSG.format(
+                            status='Extracting urls',
+                            additional_info=CHAT_LOG_SECTION.format(
+                                total=dialog_count,
+                                checked=number,
+                                progress=(number * 100) / dialog_count,
+                                chat_id=dialog.entity.id,
+
+                            ) + (URL_LOG_SECTION.format(
+                                total=found_url_count,
+                                valid=valid_url_count,
+                                progress=(valid_url_count * 100) / found_url_count,
+                            ) if found_url_count else "")
+                        )
+                    )
+
                     await asyncio.sleep(2.0)
 
             with open(
