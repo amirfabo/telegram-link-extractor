@@ -1,6 +1,6 @@
 {
     "general": {
-        "offset_date": null // Example: "2024-01-01"
+        "offset_date": null
     },
     "auth": {
         "api_id": "12345",

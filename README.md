@@ -24,7 +24,7 @@ git clone https://github.com/amirfabo/telegram-link-extractor.git
 cd telegram-link-extractor
 ```
 
-**You need install requirements before use:**
+**You need to install requirements before use:**
 
 Python 3.10+
 
@@ -49,7 +49,7 @@ pip install Telethon
     "api_hash": "YOUR_API_HASH"
   },
   "general": {
-    "offset_date": "2024-01-01" // or null
+    "offset_date": "2024-01-01 or null"
   },
   "output": {
     "path": "output.csv"
