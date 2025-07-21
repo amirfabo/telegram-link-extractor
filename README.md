@@ -68,7 +68,7 @@ python3 main.py
 The result CSV file will include these columns:
 
 - `URL` : The invitation link of channel or group 
-- `Type` : `CHANNEL`/`CHAT`/`MEGAGROUP`/`BOT`/`USER`
+- `Type` : `CHANNEL`/`GROUP`/`MEGAGROUP`/`BOT`/`USER`
 - `Title` : The title of the group or channel (if available)
 
 ## 📞 Contact
