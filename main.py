@@ -51,7 +51,7 @@ def update_screen(message: str) -> None:
 async def get_webpage(client: TelegramClient, url: str):
     # First fetch to update webpage cache
     await client(GetWebPageRequest(url=url, hash=0))
-    await asyncio.sleep(1.1)
+    await asyncio.sleep(1.2)
 
     return await client(GetWebPageRequest(url=url, hash=0))
 
@@ -149,7 +149,7 @@ async def main() -> None:
                 entity=dialog.entity,
                 filter=InputMessagesFilterUrl(),
                 offset_date=offset_param,
-                wait_time=randint(4, 12),
+                wait_time=randint(7, 12),
             ):
                 update_screen(
                     MAIN_MSG.format(
@@ -170,11 +170,13 @@ async def main() -> None:
 
                 urls = [m.group() for m in re.finditer(pattern, message.message)]
                 for url in urls:
-                    if url in checked_urls:
+                    # To avoid scanning duplicate urls like 't.me/durov' and 't.me/Durov'
+                    url_lowercase = url.lower()
+                    if url_lowercase in checked_urls:
                         continue
 
                     response = await get_webpage(client=client, url=url)
-                    checked_urls.append(url)
+                    checked_urls.append(url_lowercase)
                     all_url_count += 1
 
                     if response is not None and isinstance(response.webpage, WebPage):
