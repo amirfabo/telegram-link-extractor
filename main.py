@@ -41,7 +41,10 @@ CHAT_LOG_SECTION = (
 URL_LOG_SECTION = (
     "[URLS]\n\n" \
     "• Found: {total}\n" \
-    "• Valid: {valid} ({progress:.2f}%)\n"
+    "• Valid: {valid} ({progress:.2f}%)\n\n"
+    "• Users: {user_count}\n"
+    "• Groups: {group_count}\n"
+    "• Channels: {channel_count}\n"
 )
 
 def update_screen(message: str) -> None:
@@ -113,9 +116,14 @@ async def main() -> None:
         else:
             offset_param = None
 
+        users = 0
+        groups = 0
+        channels = 0
+
         update_screen(MAIN_MSG.format(status='Extracting urls', additional_info=''))
         for number, dialog in enumerate(dialogs, start=1):
-            if (dialog.is_group or dialog.is_channel) and not dialog.entity.creator:
+            # Whether client is administrator of chat or not.
+            if (dialog.is_group or dialog.is_channel) and not dialog.entity.admin_rights:
                 continue
 
             if dialog.is_user:
@@ -141,6 +149,9 @@ async def main() -> None:
                         total=all_url_count,
                         valid=valid_url_count,
                         progress=(valid_url_count * 100) / all_url_count,
+                        user_count=users,
+                        group_count=groups,
+                        channel_count=channels,
                     ) if all_url_count else "(No any tg link found yet!)")
                 )
             )
@@ -164,6 +175,9 @@ async def main() -> None:
                             total=all_url_count,
                             valid=valid_url_count,
                             progress=(valid_url_count * 100) / all_url_count,
+                            user_count=users,
+                            group_count=groups,
+                            channel_count=channels,
                         ) if all_url_count else "")
                     )
                 )
@@ -180,12 +194,17 @@ async def main() -> None:
                     all_url_count += 1
 
                     if response is not None and isinstance(response.webpage, WebPage):
-                        row = (
-                            url,
-                            response.webpage.type.replace('telegram_', '').upper() \
-                            if response.webpage.type != 'telegram_chat' else 'GROUP',
-                            response.webpage.title
-                        )
+                        webpage_type = response.webpage.type.replace('telegram_', '').replace('chat', 'group').upper()
+                        if webpage_type == 'CHANNEL':
+                            channels += 1
+
+                        elif webpage_type in ('MEGAGROUP', 'GROUP'):
+                            groups += 1
+
+                        elif webpage_type in ('USER', 'BOT'):
+                            users += 1
+
+                        row = (url, webpage_type, response.webpage.title)
                         url_rows.append(row)
                         valid_url_count += 1
 
@@ -202,6 +221,9 @@ async def main() -> None:
                                 total=all_url_count,
                                 valid=valid_url_count,
                                 progress=(valid_url_count * 100) / all_url_count,
+                                user_count=users,
+                                group_count=groups,
+                                channel_count=channels,
                             )
                         )
                     )
@@ -217,6 +239,8 @@ async def main() -> None:
                 for row in url_rows:
                     writer.writerow(row)
 
+            await asyncio.sleep(3.0)
+
     update_screen(
         MAIN_MSG.format(
             status='Done',
@@ -230,6 +254,9 @@ async def main() -> None:
                     total=all_url_count,
                     valid=valid_url_count,
                     progress=(valid_url_count * 100) / all_url_count,
+                    user_count=users,
+                    group_count=groups,
+                    channel_count=channels,
             ) if all_url_count else "No any tg link found from chats :(")
         ).strip()
     )
