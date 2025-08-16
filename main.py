@@ -7,7 +7,7 @@ import csv
 import platform
 import asyncio
 from datetime import datetime
-from random import randint
+from random import random, randint
 from telethon import TelegramClient
 from telethon.tl.functions.messages import GetWebPageRequest
 from telethon.tl.types import InputMessagesFilterUrl 
@@ -94,6 +94,8 @@ async def main() -> None:
     update_screen(MAIN_MSG.format(status='Logging In', additional_info='').strip())
     async with await authorize() as client:
         update_screen(MAIN_MSG.format(status='Getting chats', additional_info='').strip())
+        
+        client_entity = await client.get_me()
         dialogs = await client.get_dialogs()
         if not dialogs:
             print("\n\n[ERROR] Your account does not have any chat to extract urls.")
@@ -107,7 +109,7 @@ async def main() -> None:
         url_rows = []
         valid_url_count = 0
 
-        pattern = r"https:\/\/t(elegram)?\.me\/(joinchat\/)?[A-Za-z0-9\-_]+"
+        pattern = r"https:\/\/t(elegram)?\.me\/(joinchat\/)?\+?[A-Za-z0-9\-_]+"
         offset_date = JSON_SETTINGS['general']['offset_date']
         if offset_date is not None and re.match(r"^20[12][0-9]\-[01][1-9]\-[0-3][1-9]$", offset_date):
             year, month, day = map(int, offset_date.split('-'))
@@ -122,8 +124,15 @@ async def main() -> None:
 
         update_screen(MAIN_MSG.format(status='Extracting urls', additional_info=''))
         for number, dialog in enumerate(dialogs, start=1):
-            # Whether client is administrator of chat or not.
-            if (dialog.is_group or dialog.is_channel) and not dialog.entity.admin_rights:
+            is_group = dialog.is_group
+            is_channel = dialog.is_channel and not is_group
+
+            # Whether client is owner of group/supergroup or not.
+            if is_group and not dialog.entity.creator:
+                continue
+
+            # Whether client is administrator of broadcast chat (channel) or not.
+            if is_channel and not dialog.entity.creator and not dialog.entity.admin_rights:
                 continue
 
             if dialog.is_user:
@@ -162,6 +171,9 @@ async def main() -> None:
                 offset_date=offset_param,
                 wait_time=randint(7, 12),
             ):
+                if is_group and (not hasattr(message.from_id, "user_id") or message.from_id.user_id != client_entity.id):
+                    continue
+
                 update_screen(
                     MAIN_MSG.format(
                         status='Extracting urls',
@@ -184,7 +196,7 @@ async def main() -> None:
 
                 urls = [m.group() for m in re.finditer(pattern, message.message)]
                 for url in urls:
-                    # To avoid scanning duplicate urls like 't.me/durov' and 't.me/Durov'
+                    # To avoid scanning same urls like 't.me/durov' and 't.me/Durov'
                     url_lowercase = url.lower()
                     if url_lowercase in checked_urls:
                         continue
@@ -239,7 +251,7 @@ async def main() -> None:
                 for row in url_rows:
                     writer.writerow(row)
 
-            await asyncio.sleep(3.0)
+            await asyncio.sleep(2.0 + random())
 
     update_screen(
         MAIN_MSG.format(
